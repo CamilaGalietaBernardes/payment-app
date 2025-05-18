@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  payments-db:
+    image: postgres:15
+    container_name: payments-db
+    environment:
+      POSTGRES_DB: payments
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  payment-service:
+    build:
+      context: ./payment-service
+    container_name: payment-service
+    depends_on:
+      - payments-db
+      - rabbitmq
+    environment:
+      PGHOST: payments-db
+      PGUSER: user
+      PGPASSWORD: password
+      PGDATABASE: payments
+      PGPORT: 5432
+      RABBITMQ_URL: amqp://rabbitmq
+    ports:
+      - "3000:3000"
+
+  notification-service:
+    build:
+      context: ./notification-service
+    container_name: notification-service
+    depends_on:
+      - rabbitmq
+    environment:
+      RABBITMQ_URL: amqp://rabbitmq
+
+volumes:
+  postgres_data:
